@@ -11,18 +11,34 @@ class MatchingResult():
     """
 
     vw: float | None
+    """Wall velocity"""
+
     vp: float | None
+    """Plasma velocity in front of the wall (wall frame)"""
+
     vm: float | None
+    """Plasma velocity behind the wall (wall frame)"""
+
     wp: float | None
+    """Enthalpy density in front of the wall"""
+
     wm: float | None
+    """Enthalpy density behind the wall"""
     
     foundSolution: bool
+    """Solution found successfully"""
     
     frontWaveProfile: integrate._ivp.ivp.OdeResult | None = None
+    """Fluid profile in the front wave returned by integrate.solve_ivp"""
+
     backWaveProfile: integrate._ivp.ivp.OdeResult | None = None
+    """Fluid profile in the back wave returned by integrate.solve_ivp"""
     
     Tp: float | None = None
+    """Temperature in front of the wall"""
+
     Tm: float | None = None
+    """Temperature behind the wall"""
     
     def normalizeDensity(self, densityNucl=1):
         self.Np = densityNucl
@@ -345,7 +361,7 @@ class Hydrodynamics:
         vw : float
             Wall velocity.
         v0 : float
-            Initial plasma velocity (in the plasma frame).
+            Initial plasma velocity (in the wall frame).
         w0 : float
             Initial enthalpy.
         shockWave : bool, optional
@@ -702,7 +718,11 @@ class Hydrodynamics:
             sigma = lambda match: 0
         eps = 1e-6
         if self.vLowFrontWave+eps < self.vHighVmBC-eps:
-            if self.entropy(self.vLowFrontWave+eps, sigma) * self.entropy(self.vHighVmBC-eps, sigma) <= 0:
+            if self.fastCompute:
+                vwDefl = self.fastFindDeflagVwLTE(sigma)
+                if vwDefl is not None:
+                    solutions.append(vwDefl)
+            elif self.entropy(self.vLowFrontWave+eps, sigma) * self.entropy(self.vHighVmBC-eps, sigma) <= 0:
                 solutions.append(optimize.root_scalar(self.entropy,
                                                       bracket=(self.vLowFrontWave+eps, self.vHighVmBC-eps),
                                                       args=(sigma,)).root)
@@ -725,4 +745,96 @@ class Hydrodynamics:
     ### Faster functions used when self.fastCompute=True ###
     ########################################################
 
+    def fastVpFromVw(self, vw: float, sigma: callable|None=None) -> float:
+        """
+        Computes vp as a function of vw assuming conservation of
+        entropy, or entropy ratio sigma if it is provided. Used for
+        deflagrations or hybrid solutions.
+
+        Parameters
+        ----------
+        vw : float
+            Wall velocity
+        sigma : callable | None, optional
+            Desired entropy ratio. Must be a
+            function taking a MatchingResult and returning a float. Can also be
+            None, in which case it is set to 0. Default is None.
+
+        Returns
+        -------
+        float
+
+        """
+        assert self.fastCompute, "Error: fastVpFromVw can only be used when self.fastCompute==True."
+
+        vm = min(vw, self.cb)
+
+        if abs(self.cb2-1/3) < 1e-10 and sigma is None:
+            return 2*np.sin(np.arcsin(0.5*3**1.5*vm*(1-vm**2)*self.psiN)/3)/np.sqrt(3)
+        
+        gmsq = self.gammaSq(vm)
+        
+        def psiEff(vp):
+            # Computes psi_eff in case sigma is provided
+            if sigma is None:
+                return self.psiN
+            wp = self.wFromAlpha(self.alphaFromV(vm, vp))
+            wm = vp*wp/(vm*gmsq*(1-vp**2))
+            matching = MatchingResult(vw, vp, vm, wp, wm, True)
+            self.computeTemperatures(matching)
+            sig = sigma(matching)
+            return self.psiN/(1+sig)**self.nu
+        
+        def func(vp):
+            gpsq = self.gammaSq(vp)
+            return vp - vm*(gpsq/gmsq)**(0.5*(1/self.cb2-1))*psiEff(vp)
+        
+        return optimize.root_scalar(func, bracket=[0, vm], xtol=self.atol, rtol=self.rtol).root
     
+    def fastEqFrontWave(self, vw: float, sigma: callable|None=None) -> float:
+        """
+        Returns the residual of the matching equation at the shock front for the fast algorithm.
+
+        Parameters
+        ----------
+        vw : float
+            Wall velocity
+        sigma : callable | None, optional
+            Desired entropy ratio. Must be a
+            function taking a MatchingResult and returning a float. Can also be
+            None, in which case it is set to 0. Default is None.
+
+        Returns
+        -------
+        float
+    
+        """
+        vm = min(vw, self.cb)
+        vp = self.fastVpFromVw(vw, sigma)
+        return self.eqFrontWave(vm, vp, vw)
+    
+    def fastFindDeflagVwLTE(self, sigma: callable|None=None) -> float:
+        """
+        Computes the wall velocity for deflagration in LTE using the fast algorithm. 
+        If sigma is specified, finds the solutions which produce an entropy ratio sigma.
+
+        Parameters
+        ----------
+        sigma : callable | None, optional
+            Desired entropy ratio. Must be a
+            function taking a MatchingResult and returning a float. Can also be
+            None, in which case it is set to 0. Default is None.
+
+        Returns
+        -------
+        float
+        
+        """
+        eps = 1e-6
+
+        if self.fastEqFrontWave(self.vLowFrontWave+eps)*self.fastEqFrontWave(self.vHighVmBC-eps):
+            return optimize.root_scalar(self.fastEqFrontWave,
+                                        bracket=[self.vLowFrontWave+eps, self.vHighVmBC-eps],
+                                        xtol=self.atol,
+                                        rtol=self.rtol).root
+        return None
