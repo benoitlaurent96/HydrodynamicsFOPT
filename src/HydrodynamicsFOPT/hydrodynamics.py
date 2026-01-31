@@ -169,11 +169,11 @@ class Hydrodynamics:
             self.vJDirect = None
         
         # Lowest direct deflagration (solution with vp=0 and vm=min(cb,vw))
-            self.vLowFrontWave = 0
-            if self.alN > 0:
-                func = lambda vw: self.eqFrontWave(min(vw, self.cb), 0, vw)
-                if func(1e-10)*func(self.vJDirect) <= 0:
-                    self.vLowFrontWave = optimize.root_scalar(func, bracket=(1e-10, self.vJDirect)).root
+        self.vLowFrontWave = 0
+        if self.alN > 1/3:
+            func = lambda vw: self.eqFrontWave(min(vw, self.cb), 0, vw)
+            if func(1e-10)*func(self.vJDirect) <= 0:
+                self.vLowFrontWave = optimize.root_scalar(func, bracket=(1e-10, self.vJDirect)).root
         
         if not self.fastCompute:
             # Lowest no front wave solution
