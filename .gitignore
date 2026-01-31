@@ -1,0 +1,85 @@
+# ---------------------------------------------------------------------
+#  Global ignore file for pdesolver Python project
+# ---------------------------------------------------------------------
+
+# Byte-compiled / optimized / DLL files
+__pycache__/
+*.py[cod]
+*$py.class
+
+# C extensions
+*.so
+
+# Build / distribution artifacts
+build/
+dist/
+*.egg-info/
+*.egg
+.eggs/
+
+# Installer logs
+pip-log.txt
+pip-delete-this-directory.txt
+
+# Unit test / coverage reports
+htmlcov/
+.tox/
+.nox/
+.coverage
+.coverage.*
+.cache
+nosetests.xml
+coverage.xml
+*.cover
+*.py,cover
+*.log
+
+# Jupyter Notebook checkpoints
+.ipynb_checkpoints
+
+# pyenv / virtualenv
+.venv/
+env/
+venv/
+ENV/
+env.bak/
+venv.bak/
+
+# IDEs and editors
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# macOS system files
+.DS_Store
+.AppleDouble
+.LSOverride
+
+# macOS thumbnail / metadata files
+._*
+.Spotlight-V100
+.Trashes
+
+# Temporary or backup files
+*.tmp
+*.bak
+*.old
+*.orig
+*~
+Thumbs.db
+Desktop.ini
+
+# Project-specific cache / artifacts
+pdesolver.egg-info/
+__pycache__/
+*.pyc
+
+# Python build system artifacts
+src/*.egg-info/
+*.pyo
+MANIFEST
+
+# Optional: ignore test outputs
+tests/__pycache__/
+tests/tmp/

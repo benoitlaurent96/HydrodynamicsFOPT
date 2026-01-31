@@ -1,0 +1,27 @@
+[build-system]
+requires = ["setuptools>=61.0"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "HydrodynamicsFOPT"
+version = "0.1.0"
+description = "Module for solving hydrodynamics equation during a first-order phase transition"
+readme = "README.md"
+requires-python = ">=3.9"
+license = { text = "MIT" }
+authors = [
+    { name = "Benoit Laurent", email = "blaurent@perimeterinstitute.ca" },
+]
+
+dependencies = [
+    numpy>=1.22,
+    matplotlib>=3.7,
+    scipy>=1.10,
+]
+
+[project.urls]
+Homepage = "https://github.com/benoitlaurent96/HydrodynamicsFOPT"
+Repository = "https://github.com/benoitlaurent96/HydrodynamicsFOPT"
+
+[tool.setuptools.packages.find]
+where = ["src"]
