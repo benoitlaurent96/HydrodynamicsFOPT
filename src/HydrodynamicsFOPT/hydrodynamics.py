@@ -832,7 +832,7 @@ class Hydrodynamics:
         """
         eps = 1e-6
 
-        if self.fastEqFrontWave(self.vLowFrontWave+eps)*self.fastEqFrontWave(self.vHighVmBC-eps):
+        if self.fastEqFrontWave(self.vLowFrontWave+eps)*self.fastEqFrontWave(self.vHighVmBC-eps) < 0:
             return optimize.root_scalar(self.fastEqFrontWave,
                                         bracket=[self.vLowFrontWave+eps, self.vHighVmBC-eps],
                                         xtol=self.atol,
