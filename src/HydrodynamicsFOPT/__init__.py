@@ -1,1 +1,2 @@
-from .hydrodynamics import MatchingResult, Hydrodynamics
+from .hydrodynamics import Hydrodynamics
+from .matchingResult import MatchingResult
