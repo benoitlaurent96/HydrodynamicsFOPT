@@ -139,7 +139,7 @@ class MatchingResult():
             self.setSplines()
         return np.where(xi < self.backWaveRange[0], 0,
                         np.where(xi <= self.backWaveRange[1], self._vBackSpl[derivative](xi),
-                                 np.where(np.all([self.frontWaveRange[0] <= xi, xi < self.frontWaveRange[-1]], axis=0),
+                                 np.where(np.all([self.frontWaveRange[0] <= xi, xi <= self.frontWaveRange[-1]], axis=0),
                                           self._vFrontSpl[derivative](xi), 0)))
     
     def enthalpyProfile(self, xi, derivative=0):
