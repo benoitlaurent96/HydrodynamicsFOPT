@@ -99,9 +99,7 @@ class MatchingResult():
             raise 
         if self.frontWaveProfile is not None:
             mask = np.append([True], np.abs(self.frontWaveProfile.y[0,1:]-self.frontWaveProfile.y[0,:-1]) > 0)
-            k = 3
-            if np.sum(mask) < 4:
-                k = 1
+            k = 1
             self.frontWaveRange = [self.frontWaveProfile.y[0,0], self.frontWaveProfile.y[0,-1]]
             self._vFrontSpl = [interpolate.make_interp_spline(self.frontWaveProfile.y[0,mask], self.frontWaveProfile.t[mask], k)]
             self._wFrontSpl = [interpolate.make_interp_spline(self.frontWaveProfile.y[0,mask], self.frontWaveProfile.y[1,mask], k)]
@@ -116,9 +114,7 @@ class MatchingResult():
             self._nFrontSpl = [lambda x: np.zeros_like(x), lambda x: np.zeros_like(x)]
         if self.backWaveProfile is not None:
             mask = np.append([True], np.abs(self.backWaveProfile.y[0,1:]-self.backWaveProfile.y[0,:-1]) > 0)
-            k = 3
-            if np.sum(mask) < 4:
-                k = 1
+            k = 1
             self.backWaveRange = [self.backWaveProfile.y[0,-1], self.backWaveProfile.y[0,0]]
             self._vBackSpl = [interpolate.make_interp_spline(np.flip(self.backWaveProfile.y[0,mask]), np.flip(self.backWaveProfile.t[mask]), k)]
             self._wBackSpl = [interpolate.make_interp_spline(np.flip(self.backWaveProfile.y[0,mask]), np.flip(self.backWaveProfile.y[1,mask]), k)]
