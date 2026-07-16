@@ -1,4 +1,5 @@
 import numpy as np
+from collections.abc import Callable
 from scipy import integrate, optimize
 from .matchingResult import MatchingResult
 
@@ -575,7 +576,7 @@ class Hydrodynamics:
     The following functions are for finding the wall velocity in LTE.
     """
     
-    def entropy(self, vw: float, sigma: callable|None=None) -> float:
+    def entropy(self, vw: float, sigma: Callable[[MatchingResult],float]|None=None) -> float:
         """
         Computes the entropy ratio generated at the wall.
 
@@ -583,7 +584,7 @@ class Hydrodynamics:
         ----------
         vw : float
             Wall Velocity
-        sigma : callable | None, optional
+        sigma : Callable[[MatchingResult],float] | None, optional
             Desired entropy ratio which is substracted to the result. Must be a
             function taking a MatchingResult and returning a float. Can also be
             None, in which case it is set to 0. Default is None.
@@ -605,14 +606,14 @@ class Hydrodynamics:
         return ((matching.vm*sm/(matching.vp*sp))*np.sqrt((1-matching.vp**2)/(1-matching.vm**2)) 
                 - 1 - sigma(matching))
     
-    def findVwLTE(self, sigma: callable|None=None) -> list[float]:
+    def findVwLTE(self, sigma: Callable[[MatchingResult],float]|None=None) -> list[float]:
         """
         Computes the wall velocity in LTE. If sigma is specified, finds the solutions
         which produce an entropy ratio sigma. Returns a list containing all the solutions found.
 
         Parameters
         ----------
-        sigma : callable | None, optional
+        sigma : Callable[[MatchingResult],float] | None, optional
             Desired entropy ratio. Must be a
             function taking a MatchingResult and returning a float. Can also be
             None, in which case it is set to 0. Default is None.
@@ -654,7 +655,7 @@ class Hydrodynamics:
     ### Faster functions used when self.fastCompute=True ###
     ########################################################
 
-    def fastVpFromVw(self, vw: float, sigma: callable|None=None) -> float:
+    def fastVpFromVw(self, vw: float, sigma: Callable[[MatchingResult],float]|None=None) -> float:
         """
         Computes vp as a function of vw assuming conservation of
         entropy, or entropy ratio sigma if it is provided. Used for
@@ -664,7 +665,7 @@ class Hydrodynamics:
         ----------
         vw : float
             Wall velocity
-        sigma : callable | None, optional
+        sigma : Callable[[MatchingResult],float] | None, optional
             Desired entropy ratio. Must be a
             function taking a MatchingResult and returning a float. Can also be
             None, in which case it is set to 0. Default is None.
@@ -700,7 +701,7 @@ class Hydrodynamics:
         
         return optimize.root_scalar(func, bracket=[0, vm], xtol=self.atol, rtol=self.rtol).root
     
-    def fastEqFrontWave(self, vw: float, sigma: callable|None=None) -> float:
+    def fastEqFrontWave(self, vw: float, sigma: Callable[[MatchingResult],float]|None=None) -> float:
         """
         Returns the residual of the matching equation at the shock front for the fast algorithm.
 
@@ -708,7 +709,7 @@ class Hydrodynamics:
         ----------
         vw : float
             Wall velocity
-        sigma : callable | None, optional
+        sigma : Callable[[MatchingResult],float] | None, optional
             Desired entropy ratio. Must be a
             function taking a MatchingResult and returning a float. Can also be
             None, in which case it is set to 0. Default is None.
@@ -722,14 +723,14 @@ class Hydrodynamics:
         vp = self.fastVpFromVw(vw, sigma)
         return self.eqFrontWave(vm, vp, vw)
     
-    def fastFindDeflagVwLTE(self, sigma: callable|None=None) -> float:
+    def fastFindDeflagVwLTE(self, sigma: Callable[[MatchingResult],float]|None=None) -> float:
         """
         Computes the wall velocity for deflagration in LTE using the fast algorithm. 
         If sigma is specified, finds the solutions which produce an entropy ratio sigma.
 
         Parameters
         ----------
-        sigma : callable | None, optional
+        sigma : Callable[[MatchingResult],float] | None, optional
             Desired entropy ratio. Must be a
             function taking a MatchingResult and returning a float. Can also be
             None, in which case it is set to 0. Default is None.

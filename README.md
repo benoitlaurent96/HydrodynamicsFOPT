@@ -29,6 +29,11 @@ hydro = Hydrodynamics(alN=0.0067, psiN=0.98)
 print(hydro.findVwLTE())
 ```
 
+## Citation
+
+This package is free and open-source. If you use it in your research, please cite [2303.10171](https://arxiv.org/abs/2303.10171), on which the main part of this code is based.
+If you use the functions to compute the entropy production in ```/src/HydrodynamicsFOPT/entropyProduction/```, please also cite [2411.13641](https://arxiv.org/abs/2411.13641) and 26xx.xxxxx.
+
 ## Requirements
 
 - Python ≥ 3.9

@@ -2,20 +2,23 @@ import numpy as np
 from collections.abc import Callable
 
 from ..matchingResult import MatchingResult
-from .integrals import totalPressure, pT
 from .entropyBase import EntropyBase
+from .entropyBallistic import EntropyBallistic
+from .entropyNLTE import EntropyNLTE
 
-class EntropyBallistic(EntropyBase):
+class EntropyInterpolated(EntropyBase):
     def __init__(self,
                  massesSymmetricPhase: list[float|Callable[[float],float]],
                  massesBrokenPhase: list[float|Callable[[float],float]],
                  dofs: list[int],
                  statistics: list[int],
+                 tau: list[float],
+                 L: float,
                  Tn: float,
                  gstar: float = 106.75,
                  cs2: float = 1/3) -> None:
         """
-        Initialize the EntropyBallistic class.
+        Initialize the EntropyInterpolated class.
 
         Parameters
         ----------
@@ -29,6 +32,10 @@ class EntropyBallistic(EntropyBase):
             List of number of degrees of freedom of each particle.
         statistics : list[int]
             List of the particles' statistic. Must be 1 for fermions and -1 for bosons.
+        tau : list[float]
+            List of effective relaxation times (in units of 1/T) for each particle.
+        L : float
+            Wall thickness.
         Tn : float
             Nucleation temperature.
         gstar : float
@@ -40,10 +47,16 @@ class EntropyBallistic(EntropyBase):
         """
         
         super().__init__(massesSymmetricPhase, massesBrokenPhase, dofs, statistics, Tn, gstar, cs2)
+        self.tau = np.array(tau)
+        self.L = L
+
+        self.entropyNLTE = EntropyNLTE(massesSymmetricPhase, massesBrokenPhase, dofs, statistics, tau, L, Tn, gstar, cs2)
+        self.entropyBallistic = EntropyBallistic(massesSymmetricPhase, massesBrokenPhase, dofs, statistics, Tn, gstar, cs2)
 
     def sigma(self, matching: MatchingResult) -> float:
         """
-        Computes the entropy fraction sigma in the ballistic limit.
+        Computes the interpolation of the entropy fraction sigma
+        between the NLTE and ballistic limit.
         See Eqs. (???) and (???) of 26xx.xxxxx.
 
         Parameters
@@ -51,22 +64,6 @@ class EntropyBallistic(EntropyBase):
         matching : MatchingResult
             MatchingResult object containing v_\pm and T_\pm.
         """
-        Tp = matching.Tp
-        Tm = matching.Tm
-        vp = matching.vp
-        vm = matching.vm
-        gp = 1/np.sqrt(1-vp**2)
-        gm = 1/np.sqrt(1-vm**2)
-        wm = self.wn*matching.wm
-        wp = self.wn*matching.wp
-
-        DS = gp*vp*sum([self.dofs[i]*(totalPressure(self.mSym[i](Tp), self.mBrok[i](Tm), self.statistics[i],
-                                                    vp, vm, Tp, Tm)
-                                      -pT(self.mSym[i](Tp), Tp, self.statistics[i])
-                                      +pT(self.mBrok[i](Tm), Tm, self.statistics[i])) for i in range(len(self.mSym))])/Tp
-        
-        DS -= gp*vp*self.dofMassless*np.pi**2*(Tp**4-Tm**4)/(90*Tp)
-        DS -= (gp/Tp-gm/Tm)*wm*gm**2*vm
-        DS += (gp*vp/Tp-gm*vm/Tm)*wm*gm**2*vm**2
-        
-        return Tp*DS/(wp*vp*gp)
+        sigmaNLTE = self.entropyNLTE(matching)
+        sigmaBallistic = self.entropyBallistic(matching)
+        return sigmaBallistic*sigmaNLTE/(sigmaBallistic+sigmaNLTE)
