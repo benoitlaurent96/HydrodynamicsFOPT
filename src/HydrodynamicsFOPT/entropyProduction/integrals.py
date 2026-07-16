@@ -86,6 +86,16 @@ def pT(m: float, T: float, a: int=1) -> float:
     func = lambda p: a*p**2*np.log(1+a*np.exp(-np.sqrt(p**2+(m/T)**2)))
     return T**4*integrate.quad(func, 0, np.inf)[0]/(2*np.pi**2)
 
+def enthalpy(m, T, a=1):
+    """
+    Computes the enthalpy of a single dof.
+    """
+    x = m/T
+    def func(p):
+        E = np.sqrt(x**2+p**2)
+        return p**2*(x**2+4*p**2/3)*np.exp(-E)/(E*(1+a*np.exp(-E)))
+    return T**4*integrate.quad(func, 0, np.inf)[0]/(2*np.pi**2)
+
 def nlteIntegral(m1: float, m2: float, Tp: float, Tm: float, vp: float, vm: float, statistic: int, L: float) -> float:
     """
     Computes the NLTE integral (Eq. ?? in 26xx.xxxxx). 

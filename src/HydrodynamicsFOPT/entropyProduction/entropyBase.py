@@ -3,6 +3,7 @@ from abc import ABC, abstractmethod
 from collections.abc import Callable
 
 from ..matchingResult import MatchingResult
+from .integrals import enthalpy
 
 class EntropyBase(ABC):
     def __init__(self,
@@ -92,3 +93,12 @@ class EntropyBase(ABC):
             MatchingResult object containing v_\pm and T_\pm.
         """
         pass
+
+    def computePsi(self) -> float:
+        """
+        Computes the enthalpy fraction psi corresponding to the given masses.
+        """
+        wMasslessDOFs = 2*np.pi**2*self.dofMassless*self.Tn**4/45
+        wBrok = sum([self.dofs[i]*enthalpy(self.mBrok[i](self.Tn), self.Tn, self.statistics[i]) for i in range(len(self.dofs))])
+        wSym = sum([self.dofs[i]*enthalpy(self.mSym[i](self.Tn), self.Tn, self.statistics[i]) for i in range(len(self.dofs))])
+        return (wBrok+wMasslessDOFs)/(wSym+wMasslessDOFs)
