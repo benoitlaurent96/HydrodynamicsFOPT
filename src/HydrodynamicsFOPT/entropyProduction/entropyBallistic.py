@@ -2,8 +2,7 @@ import numpy as np
 from scipy import integrate
 
 from ..matchingResult import MatchingResult
-from ..hydrodynamics import Hydrodynamics
-from .ballisticIntegrals import totalPressure
+from .ballisticIntegrals import totalPressure, pT
 
 class EntropyBallistic:
     def __init__(self,
@@ -45,6 +44,14 @@ class EntropyBallistic:
         self.statistics = np.array(statistics)
         self.Tn = Tn
         self.wn = gstar*(1+1/cs2)*np.pi**2*Tn**4/90
+        self.dofMassless = gstar
+        for i, dof in enumerate(dofs):
+            if statistics[i] == 1:
+                self.dofMassless -= 7*dof/8
+            elif statistics[i] == -1:
+                self.dofMassless -= dof
+            else:
+                raise ValueError('statistic must only contain 1 or -1.')
     
     def __call__(self, matching: MatchingResult):
         return self.sigma(matching)
@@ -54,51 +61,18 @@ class EntropyBallistic:
         Tm = matching.Tm
         vp = matching.vp
         vm = matching.vm
-        sp = self.wn*matching.wp/Tp
+        gp = 1/np.sqrt(1-vp**2)
+        gm = 1/np.sqrt(1-vm**2)
+        wm = self.wn*matching.wm
+        wp = self.wn*matching.wp
 
-        DS = sum([self.dofs[i]*self.tau[i]
-                  *EntropyNLTE.nlteIntegral(self.mSym[i], self.mBrok[i], Tp, Tm,
-                                            vp, vm, self.statistics[i], self.L) for i in range(len(self.tau))])
-        return DS*np.sqrt(1-vp**2)/(sp*vp)
+        DS = gp*vp*sum([self.dofs[i]*(totalPressure(self.mSym[i], self.mBrok[i], self.statistics[i],
+                                                    vp, vm, Tp, Tm)
+                                      -pT(self.mSym[i], Tp, self.statistics[i])
+                                      +pT(self.mBrok[i], Tm, self.statistics[i])) for i in range(len(self.mSym))])/Tp
         
-    def nlteIntegral(m1, m2, Tp, Tm, vp, vm, statistic, L):
-        """
-        Computes the NLTE integral (Eq. ?? in 26xx.xxxxx). 
-        Assumes that the mass, temperature and plasma velocity follow
-        the same tanh profile.
-
-        Parameters
-        ----------
-        m1 : float
-            Mass in the symmetric phase
-        m2 : float
-            Mass in the broken phase
-        Tp : float
-            Temperature in front of the wall
-        Tm : float
-            Temperature behind the wall
-        vp : float
-            Plasma velocity in front of the wall (in the wall frame)
-        vm : float
-            Plasma velocity in behind the wall (in the wall frame)
-        statistic : float
-            Particle statistic (1 for fermions, -1 for bosons)
-        L : float
-            Wall width
-        N : int, optional
-            Number of grid points in the z and p directions. Default is 100.
-
-        """
-        dmsq = lambda m: -4*m*(m-m1)*(m-m2)/(L*(m1-m2))
-        T = lambda m: Tp + (m-m1)*(Tm-Tp)/(m2-m1)
-        v = lambda m: vp + (m-m1)*(vm-vp)/(m2-m1)
-        gamma = lambda m: 1/np.sqrt(1-v(m)**2)
-        Tavg = (Tp+Tm)/2
-        p = lambda rho: -Tavg*np.log(rho)
-        drhodpXdfeq = lambda m, rho: -Tavg*np.exp(-np.sqrt(p(rho)**2+m**2)/T(m)+p(rho)/Tavg)/(1+statistic*np.exp(-np.sqrt(p(rho)**2+m**2)/T(m)))**2
-
-        integrand = lambda m, rho: 2*m*(v(m)*gamma(m)/T(m))**2*dmsq(m)*p(rho)**2*drhodpXdfeq(m, rho)/(8*np.pi**2*T(m)*(p(rho)**2+m**2))
-
-        integral = integrate.dblquad(integrand, 1e-10, 1, m1, m2)[0]
-
-        return integral
+        DS -= gp*vp*self.dofMassless*np.pi**2*(Tp**4-Tm**4)/(90*Tp)
+        DS -= (gp/Tp-gm/Tm)*wm*gm**2*vm
+        DS += (gp*vp/Tp-gm*vm/Tm)*wm*gm**2*vm**2
+        
+        return Tp*DS/(wp*vp*gp)

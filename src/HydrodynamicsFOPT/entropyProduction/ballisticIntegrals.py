@@ -78,3 +78,10 @@ def totalPressure(m1, m2, a, vp, vm, Tp, Tm):
     Ptp = transmission_p(m1,m2,Tp,vp,a)
     Ptm = transmission_m(m1,m2,Tm,vm,a)
     return Pr+Ptp+Ptm
+
+def pT(m, T, a=1):
+    """
+    Computes the thermal pressure of a single dof.
+    """
+    func = lambda p: a*p**2*np.log(1+a*np.exp(-np.sqrt(p**2+(m/T)**2)))
+    return T**4*integrate.quad(func, 0, np.inf)[0]/(2*np.pi**2)
