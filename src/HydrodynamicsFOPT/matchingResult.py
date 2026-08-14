@@ -27,10 +27,10 @@ class MatchingResult():
     foundSolution: bool
     """Solution found successfully"""
     
-    frontWaveProfile: integrate._ivp.ivp.OdeResult | None = None
+    _frontWaveProfile: integrate._ivp.ivp.OdeResult | None = None
     """Fluid profile in the front wave returned by integrate.solve_ivp"""
 
-    backWaveProfile: integrate._ivp.ivp.OdeResult | None = None
+    _backWaveProfile: integrate._ivp.ivp.OdeResult | None = None
     """Fluid profile in the back wave returned by integrate.solve_ivp"""
     
     Tp: float | None = None
@@ -53,17 +53,17 @@ class MatchingResult():
     
     def normalizeDensity(self, densityNucl=1):
         self.Np = densityNucl
-        if self.frontWaveProfile is not None:
-            vpShock = self.frontWaveProfile.y[0,-1]
-            vmShock = (vpShock-self.frontWaveProfile.t[-1])/(1-vpShock*self.frontWaveProfile.t[-1])
+        if self._frontWaveProfile is not None:
+            vpShock = self._frontWaveProfile.y[0,-1]
+            vmShock = (vpShock-self._frontWaveProfile.t[-1])/(1-vpShock*self._frontWaveProfile.t[-1])
             nmShock = densityNucl*(vpShock/vmShock)*np.sqrt((1-vmShock**2)/(1-vpShock**2))
-            self.frontWaveProfile.y[2] *= nmShock/self.frontWaveProfile.y[2,-1]
-            self.Np = self.frontWaveProfile.y[2,0]
+            self._frontWaveProfile.y[2] *= nmShock/self._frontWaveProfile.y[2,-1]
+            self.Np = self._frontWaveProfile.y[2,0]
         
         self.Nm = self.Np*(self.vp/self.vm)*np.sqrt((1-self.vm**2)/(1-self.vp**2))
         
-        if self.backWaveProfile is not None:
-            self.backWaveProfile.y[2] *= self.Nm/self.backWaveProfile.y[2,0]
+        if self._backWaveProfile is not None:
+            self._backWaveProfile.y[2] *= self.Nm/self._backWaveProfile.y[2,0]
     
     def plotVelocity(self, derivative=0):
         xi = np.linspace(0, 1, 1000)
@@ -94,31 +94,31 @@ class MatchingResult():
     
     def setSplines(self, densityNucl=1):
         self.normalizeDensity(densityNucl)
-        if self.frontWaveProfile is None and self.backWaveProfile is None:
+        if self._frontWaveProfile is None and self._backWaveProfile is None:
             print('Error: The plasma profile has not been initialized.')
             raise 
-        if self.frontWaveProfile is not None:
-            mask = np.append([True], np.abs(self.frontWaveProfile.y[0,1:]-self.frontWaveProfile.y[0,:-1]) > 0)
+        if self._frontWaveProfile is not None:
+            mask = np.append([True], np.abs(self._frontWaveProfile.y[0,1:]-self._frontWaveProfile.y[0,:-1]) > 0)
             k = 1
-            self.frontWaveRange = [self.frontWaveProfile.y[0,0], self.frontWaveProfile.y[0,-1]]
-            self._vFrontSpl = [interpolate.make_interp_spline(self.frontWaveProfile.y[0,mask], self.frontWaveProfile.t[mask], k)]
-            self._wFrontSpl = [interpolate.make_interp_spline(self.frontWaveProfile.y[0,mask], self.frontWaveProfile.y[1,mask], k)]
-            self._nFrontSpl = [interpolate.make_interp_spline(self.frontWaveProfile.y[0,mask], self.frontWaveProfile.y[2,mask], k)]
+            self.frontWaveRange = [self._frontWaveProfile.y[0,0], self._frontWaveProfile.y[0,-1]]
+            self._vFrontSpl = [interpolate.make_interp_spline(self._frontWaveProfile.y[0,mask], self._frontWaveProfile.t[mask], k)]
+            self._wFrontSpl = [interpolate.make_interp_spline(self._frontWaveProfile.y[0,mask], self._frontWaveProfile.y[1,mask], k)]
+            self._nFrontSpl = [interpolate.make_interp_spline(self._frontWaveProfile.y[0,mask], self._frontWaveProfile.y[2,mask], k)]
             self._vFrontSpl.append(self._vFrontSpl[0].derivative(1))
             self._wFrontSpl.append(self._wFrontSpl[0].derivative(1))
             self._nFrontSpl.append(self._nFrontSpl[0].derivative(1))
         else:
-            self.frontWaveRange = [self.backWaveProfile.y[0,0], self.backWaveProfile.y[0,0]]
+            self.frontWaveRange = [self._backWaveProfile.y[0,0], self._backWaveProfile.y[0,0]]
             self._vFrontSpl = [lambda x: np.zeros_like(x), lambda x: np.zeros_like(x)]
             self._wFrontSpl = [lambda x: np.zeros_like(x), lambda x: np.zeros_like(x)]
             self._nFrontSpl = [lambda x: np.zeros_like(x), lambda x: np.zeros_like(x)]
-        if self.backWaveProfile is not None:
-            mask = np.append([True], np.abs(self.backWaveProfile.y[0,1:]-self.backWaveProfile.y[0,:-1]) > 0)
+        if self._backWaveProfile is not None:
+            mask = np.append([True], np.abs(self._backWaveProfile.y[0,1:]-self._backWaveProfile.y[0,:-1]) > 0)
             k = 1
-            self.backWaveRange = [self.backWaveProfile.y[0,-1], self.backWaveProfile.y[0,0]]
-            self._vBackSpl = [interpolate.make_interp_spline(np.flip(self.backWaveProfile.y[0,mask]), np.flip(self.backWaveProfile.t[mask]), k)]
-            self._wBackSpl = [interpolate.make_interp_spline(np.flip(self.backWaveProfile.y[0,mask]), np.flip(self.backWaveProfile.y[1,mask]), k)]
-            self._nBackSpl = [interpolate.make_interp_spline(np.flip(self.backWaveProfile.y[0,mask]), np.flip(self.backWaveProfile.y[2,mask]), k)]
+            self.backWaveRange = [self._backWaveProfile.y[0,-1], self._backWaveProfile.y[0,0]]
+            self._vBackSpl = [interpolate.make_interp_spline(np.flip(self._backWaveProfile.y[0,mask]), np.flip(self._backWaveProfile.t[mask]), k)]
+            self._wBackSpl = [interpolate.make_interp_spline(np.flip(self._backWaveProfile.y[0,mask]), np.flip(self._backWaveProfile.y[1,mask]), k)]
+            self._nBackSpl = [interpolate.make_interp_spline(np.flip(self._backWaveProfile.y[0,mask]), np.flip(self._backWaveProfile.y[2,mask]), k)]
             self._vBackSpl.append(self._vBackSpl[0].derivative(1))
             self._wBackSpl.append(self._wBackSpl[0].derivative(1))
             self._nBackSpl.append(self._nBackSpl[0].derivative(1))
@@ -143,10 +143,10 @@ class MatchingResult():
             self.setSplines()
         if derivative == 0:
             w1 = 1
-            if self.backWaveProfile is None:
+            if self._backWaveProfile is None:
                 w0 = self.wm
             else:
-                w0 = self.backWaveProfile.y[1,-1]
+                w0 = self._backWaveProfile.y[1,-1]
         else:
             w0 = 0
             w1 = 0
@@ -160,10 +160,10 @@ class MatchingResult():
             self.setSplines()
         if derivative == 0:
             n1 = 1
-            if self.backWaveProfile is None:
+            if self._backWaveProfile is None:
                 n0 = self.Nm
             else:
-                n0 = self.backWaveProfile.y[2,-1]
+                n0 = self._backWaveProfile.y[2,-1]
         else:
             n0 = 0
             n1 = 0

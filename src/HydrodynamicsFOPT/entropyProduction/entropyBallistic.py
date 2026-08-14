@@ -2,7 +2,7 @@ import numpy as np
 from collections.abc import Callable
 
 from ..matchingResult import MatchingResult
-from .integrals import totalPressure, pT
+from .integrals import totalPressure, pT, enthalpy
 from .entropyBase import EntropyBase
 
 class EntropyBallistic(EntropyBase):
@@ -41,13 +41,15 @@ class EntropyBallistic(EntropyBase):
         
         super().__init__(massesSymmetricPhase, massesBrokenPhase, dofs, statistics, Tn, gstar, cs2)
 
-    def sigma(self, matching: MatchingResult) -> float:
+    def sigmaSingleDOF(self, i: int, matching: MatchingResult) -> float:
         """
         Computes the entropy fraction sigma in the ballistic limit.
         See Eqs. (???) and (???) of 26xx.xxxxx.
 
         Parameters
         ----------
+        i : int
+            Index of the DOF.
         matching : MatchingResult
             MatchingResult object containing v_\pm and T_\pm.
         """
@@ -57,16 +59,12 @@ class EntropyBallistic(EntropyBase):
         vm = matching.vm
         gp = 1/np.sqrt(1-vp**2)
         gm = 1/np.sqrt(1-vm**2)
-        wm = self.wn*matching.wm
         wp = self.wn*matching.wp
 
-        DS = gp*vp*sum([self.dofs[i]*(totalPressure(self.mSym[i](Tp), self.mBrok[i](Tm), self.statistics[i],
-                                                    vp, vm, Tp, Tm)
-                                      -pT(self.mSym[i](Tp), Tp, self.statistics[i])
-                                      +pT(self.mBrok[i](Tm), Tm, self.statistics[i])) for i in range(len(self.mSym))])/Tp
-        
-        DS -= gp*vp*self.dofMassless*np.pi**2*(Tp**4-Tm**4)/(90*Tp)
-        DS -= (gp/Tp-gm/Tm)*wm*gm**2*vm
-        DS += (gp*vp/Tp-gm*vm/Tm)*wm*gm**2*vm**2
+        DS = 0.5*(gp*vp/Tp+gm*vm/Tm)*(totalPressure(self.mSym[i](Tp), self.mBrok[i](Tm), self.statistics[i], vp, vm, Tp, Tm)
+                                      - pT(self.mSym[i](Tp), Tp, self.statistics[i])
+                                      + pT(self.mBrok[i](Tm), Tm, self.statistics[i]))
+        DS += 0.5*((gp*vp/Tp-gm*vm/Tm)*gm**2*vm**2-(gp/Tp-gm/Tm)*gm**2*vm)*enthalpy(self.mBrok[i](Tm), Tm, self.statistics[i])
+        DS += 0.5*((gp*vp/Tp-gm*vm/Tm)*gp**2*vp**2-(gp/Tp-gm/Tm)*gp**2*vp)*enthalpy(self.mSym[i](Tp), Tp, self.statistics[i])
         
         return Tp*DS/(wp*vp*gp)

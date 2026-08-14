@@ -377,7 +377,7 @@ class Hydrodynamics:
         wm = self.gammaSq(vp)*vp*wp/(vm*self.gammaSq(vm))
         backWaveProfile = self.integratePlasma(vw, vm, wm, False, 1)
         
-        return MatchingResult(vw, vp, vm, wp, wm, True, backWaveProfile=backWaveProfile)
+        return MatchingResult(vw, vp, vm, wp, wm, True, _backWaveProfile=backWaveProfile)
     
     def matchingWithFrontWave(self, vw: float) -> MatchingResult:
         """
@@ -416,7 +416,7 @@ class Hydrodynamics:
             wm = self.gammaSq(vp)*vp*wp/(vm*self.gammaSq(vm))
             frontWaveProfile = self.integratePlasma(vw, vp, wp, True, 1)
             backWaveProfile = self.integratePlasma(vw, vm, wm, False, 1) if vm != vw else None
-            return MatchingResult(vw, vp, vm, wp, wm, True, frontWaveProfile=frontWaveProfile, backWaveProfile=backWaveProfile)
+            return MatchingResult(vw, vp, vm, wp, wm, True, _frontWaveProfile=frontWaveProfile, _backWaveProfile=backWaveProfile)
         
         ###########################################################################################
         ## If no solution were found, consider the case where vp is fixed to cs and vm is varied ##
@@ -439,7 +439,7 @@ class Hydrodynamics:
                 wm = self.gammaSq(vp)*vp*wp/(vm*self.gammaSq(vm))
                 frontWaveProfile = self.integratePlasma(vw, vp, wp, True, 1)
                 backWaveProfile = self.integratePlasma(vw, vm, wm, False, 1) if vm != vw else None
-                return MatchingResult(vw, vp, vm, wp, wm, True, frontWaveProfile=frontWaveProfile, backWaveProfile=backWaveProfile)
+                return MatchingResult(vw, vp, vm, wp, wm, True, _frontWaveProfile=frontWaveProfile, _backWaveProfile=backWaveProfile)
         
         # If no solution were found, return an empty MatchingResult object.
         return MatchingResult(None, None, None, None, None, False)
@@ -606,7 +606,7 @@ class Hydrodynamics:
         return ((matching.vm*sm/(matching.vp*sp))*np.sqrt((1-matching.vp**2)/(1-matching.vm**2)) 
                 - 1 - sigma(matching))
     
-    def findVwLTE(self, sigma: Callable[[MatchingResult],float]|None=None) -> list[float]:
+    def findVwLTE(self, sigma: Callable[[MatchingResult],float]|None=None, whichSolution: str='all') -> list[float]:
         """
         Computes the wall velocity in LTE. If sigma is specified, finds the solutions
         which produce an entropy ratio sigma. Returns a list containing all the solutions found.
@@ -617,6 +617,10 @@ class Hydrodynamics:
             Desired entropy ratio. Must be a
             function taking a MatchingResult and returning a float. Can also be
             None, in which case it is set to 0. Default is None.
+        whichSolution : str, optional
+            Tells the solver which solution to find. Can either be 'shock'
+            (looks for solutions with shock wave), 'noShock' (looks for solutions
+            with no shock wave), or 'all' (looks for both kinds).
 
         Returns
         -------
@@ -624,11 +628,12 @@ class Hydrodynamics:
             List containing all the solutions found.
         """
         solutions = []
+        sigmaNone = sigma is None
         if sigma is None:
             sigma = lambda match: 0
         eps = 1e-6
-        if self.vLowFrontWave+eps < self.vHighVmBC-eps:
-            if self.fastCompute:
+        if self.vLowFrontWave+eps < self.vHighVmBC-eps and whichSolution in ['all', 'shock']:
+            if self.fastCompute and sigmaNone:
                 vwDefl = self.fastFindDeflagVwLTE(sigma)
                 if vwDefl is not None:
                     solutions.append(vwDefl)
@@ -637,13 +642,13 @@ class Hydrodynamics:
                                                       bracket=(self.vLowFrontWave+eps, self.vHighVmBC-eps),
                                                       args=(sigma,)).root)
         
-        if self.vLowVpBC+eps < self.vLowNoFrontWave-eps:
+        if self.vLowVpBC+eps < self.vLowNoFrontWave-eps and whichSolution in ['all', 'shock']:
             if self.entropy(self.vLowVpBC+eps, sigma) * self.entropy(self.vLowNoFrontWave-eps, sigma) <= 0:
                 solutions.append(optimize.root_scalar(self.entropy,
                                                       bracket=(self.vLowVpBC+eps, self.vLowNoFrontWave-eps),
                                                       args=(sigma,)).root)
                 
-        if self.vLowNoFrontWave+eps < 1-eps:
+        if self.vLowNoFrontWave+eps < 1-eps and whichSolution in ['all', 'noShock']:
             if self.entropy(self.vLowNoFrontWave+eps, sigma) * self.entropy(1-eps, sigma) <= 0:
                 solutions.append(optimize.root_scalar(self.entropy,
                                                       bracket=(self.vLowNoFrontWave+eps, 1-eps),
@@ -697,7 +702,7 @@ class Hydrodynamics:
         
         def func(vp):
             gpsq = self.gammaSq(vp)
-            return vp - vm*(gpsq/gmsq)**(0.5*(1/self.cb2-1))*psiEff(vp)
+            return vp - vm*(gpsq/gmsq)**(self.nu/2-1)*psiEff(vp)
         
         return optimize.root_scalar(func, bracket=[0, vm], xtol=self.atol, rtol=self.rtol).root
     
@@ -742,9 +747,10 @@ class Hydrodynamics:
         """
         eps = 1e-6
 
-        if self.fastEqFrontWave(self.vLowFrontWave+eps)*self.fastEqFrontWave(self.vHighVmBC-eps) < 0:
+        if self.fastEqFrontWave(self.vLowFrontWave+eps, sigma)*self.fastEqFrontWave(self.vHighVmBC-eps, sigma) < 0:
             return optimize.root_scalar(self.fastEqFrontWave,
                                         bracket=[self.vLowFrontWave+eps, self.vHighVmBC-eps],
+                                        args=(sigma,),
                                         xtol=self.atol,
                                         rtol=self.rtol).root
         return None

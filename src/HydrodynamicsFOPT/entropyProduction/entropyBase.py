@@ -47,13 +47,13 @@ class EntropyBase(ABC):
             if callable(mSym):
                 self.mSym.append(mSym)
             elif isinstance(mSym, float) or isinstance(mSym, int):
-                self.mSym.append(lambda T: mSym)
+                self.mSym.append(lambda T, m=mSym: m)
             else:
                 raise ValueError('massesSymmetricPhase must only contain floats or callables.')
             if callable(mBrok):
                 self.mBrok.append(mBrok)
             elif isinstance(mBrok, float) or isinstance(mBrok, int):
-                self.mBrok.append(lambda T: mBrok)
+                self.mBrok.append(lambda T, m=mBrok: m)
             else:
                 raise ValueError('massesBrokenPhase must only contain floats or callables.')
 
@@ -81,14 +81,28 @@ class EntropyBase(ABC):
         """
         return self.sigma(matching)
 
-    @abstractmethod
     def sigma(self, matching: MatchingResult) -> float:
         """
         Computes the entropy fraction sigma. See Eqs. (???) of 26xx.xxxxx.
+
+        Parameters
+        ----------
+        matching : MatchingResult
+            MatchingResult object containing v_\pm and T_\pm.
+        """
+        return sum([self.dofs[i]*self.sigmaSingleDOF(i, matching) for i in range(len(self.dofs))])
+
+    @abstractmethod
+    def sigmaSingleDOF(self, i: int, matching: MatchingResult) -> float:
+        """
+        Computes the entropy fraction sigma for a single DOF corresponding to 
+        the index i. See Eqs. (???) of 26xx.xxxxx.
         Must be redefined by user.
 
         Parameters
         ----------
+        i : int
+            Index of the DOF.
         matching : MatchingResult
             MatchingResult object containing v_\pm and T_\pm.
         """

@@ -5,3 +5,4 @@ from .entropyProduction.entropyBallistic import EntropyBallistic
 from .entropyProduction.entropyBase import EntropyBase
 from .entropyProduction.entropyInterpolated import EntropyInterpolated
 from .entropyProduction import integrals
+from .entropyProduction.relaxationTime import estimateTau

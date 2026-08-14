@@ -49,13 +49,15 @@ class EntropyNLTE(EntropyBase):
         self.tau = np.array(tau)
         self.L = L
 
-    def sigma(self, matching: MatchingResult) -> float:
+    def sigmaSingleDOF(self, i: int, matching: MatchingResult) -> float:
         """
         Computes the entropy fraction sigma in the NLTE limit.
         See Eqs. (???) and (???) of 26xx.xxxxx.
 
         Parameters
         ----------
+        i : int
+            Index of the DOF.
         matching : MatchingResult
             MatchingResult object containing v_\pm and T_\pm.
         """
@@ -65,7 +67,5 @@ class EntropyNLTE(EntropyBase):
         vm = matching.vm
         sp = self.wn*matching.wp/Tp
 
-        DS = sum([self.dofs[i]*self.tau[i]
-                  *nlteIntegral(self.mSym[i](Tp), self.mBrok[i](Tm), Tp, Tm,
-                                            vp, vm, self.statistics[i], self.L) for i in range(len(self.tau))])
+        DS = self.tau[i]*nlteIntegral(self.mSym[i](Tp), self.mBrok[i](Tm), Tp, Tm,vp, vm, self.statistics[i], self.L)
         return DS*np.sqrt(1-vp**2)/(sp*vp)
