@@ -17,9 +17,7 @@ class EntropyInterpolated(EntropyBase):
                  Tn: float,
                  gstar: float = 106.75,
                  cs2: float = 1/3,
-                 interpolateTotal: bool = False,
-                 cancelQuadratic: bool = False,
-                 vev: float|None = None) -> None:
+                 interpolateTotal: bool = False) -> None:
         """
         Initialize the EntropyInterpolated class.
 
@@ -46,6 +44,10 @@ class EntropyInterpolated(EntropyBase):
             Default is 106.75.
         cs2 : float, optional
             Speed of sound squared in front of the wall. Default is 1/3.
+        interpolateTotal : bool, optional
+            Bool controlling if the interpolation is performed on the total
+            entropy (True) or on the entropy for each individual species (False). Default
+            is False.
 
         """
         
@@ -57,8 +59,6 @@ class EntropyInterpolated(EntropyBase):
         self.entropyBallistic = EntropyBallistic(massesSymmetricPhase, massesBrokenPhase, dofs, statistics, Tn, gstar, cs2)
 
         self.interpolateTotal = interpolateTotal
-        self.cancelQuadratic = cancelQuadratic
-        self.vev = vev
 
     def sigma(self, matching: MatchingResult) -> float:
         """
@@ -79,16 +79,6 @@ class EntropyInterpolated(EntropyBase):
         sigmaBallistic = self.entropyBallistic(matching)
         sigma = sigmaBallistic*sigmaNLTE/(sigmaBallistic+sigmaNLTE)
 
-        if self.vev is not None:
-            b = 3*self.L**2*matching.wp*self.wn/self.vev**2
-            roots = np.roots([-b*sigmaNLTE**2, sigmaNLTE**2-sigmaBallistic**2+2*b*sigmaBallistic*sigmaNLTE**2,
-                              -2*sigmaBallistic*sigmaNLTE**2-b*sigmaNLTE**2*sigmaBallistic**2, sigmaNLTE**2*sigmaBallistic**2])
-            return roots[np.argmin(np.abs(roots.imag))].real
-            # print(roots)
-            # print(np.sqrt(1-b*roots)*sigmaNLTE*sigmaBallistic/(sigmaBallistic+np.sqrt(1-b*roots)*sigmaNLTE))
-            # print(sigmaNLTE, sigmaBallistic, self.L*self.Tn/np.sqrt(1-b*roots))
-        if self.cancelQuadratic:
-            sigma -= (sigmaBallistic*sigmaNLTE)**2/(sigmaBallistic+sigmaNLTE)**3
         return sigma
 
     def sigmaSingleDOF(self, i: int, matching: MatchingResult) -> float:

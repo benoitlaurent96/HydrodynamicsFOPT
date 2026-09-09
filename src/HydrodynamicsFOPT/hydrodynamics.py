@@ -3,6 +3,14 @@ from collections.abc import Callable
 from scipy import integrate, optimize
 from .matchingResult import MatchingResult
 
+# Smallest fluid velocity used when integrating the hydrodynamic equations. The
+# equations are singular at v=0, so the integration is stopped at |v| = VMIN.
+# Below v ~ 1e-16, xi has already reached its round-off floor and the right-hand side
+# of the equations, which grows like 1/v, blows up on the round-off noise instead of
+# converging. VMIN is therefore kept well above that floor, while remaining far below
+# the absolute tolerance of the integration.
+VMIN = 1e-12
+
 
 class Hydrodynamics:
     def __init__(self,
@@ -235,6 +243,15 @@ class Hydrodynamics:
         """
         xi, w = xiAndW[:2]
 
+        # eq1 diverges like 1/v when v -> 0, which is why the integration is stopped at
+        # |v| = VMIN. The Runge-Kutta stages can nevertheless evaluate the equations
+        # exactly at v = 0 (through cancellation of the small velocities near the end
+        # point), which would produce inf and nan. Clamping |v| to VMIN keeps the
+        # equations finite there without affecting the solution, since the solver never
+        # accepts a step below that velocity.
+        if abs(v) < VMIN:
+            v = np.copysign(VMIN, v)
+
         if shockWave:
             csq = self.cs2
         else:
@@ -303,7 +320,7 @@ class Hydrodynamics:
                                                    y=np.transpose([xIni]))
         else:
             fluidProfile = integrate.solve_ivp(self.shockDE,
-                                               (v0BubbleFrame, np.sign(v0BubbleFrame)*1e-100),
+                                               (v0BubbleFrame, np.sign(v0BubbleFrame)*VMIN),
                                                xIni,
                                                args=(shockWave,),
                                                events=shockEvent,
