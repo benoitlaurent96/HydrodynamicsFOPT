@@ -29,7 +29,7 @@ hydro = Hydrodynamics(alN=0.0067, psiN=0.98)
 print(hydro.findVwLTE())
 ```
 
-More examples involving the calculation of the out-of-equilibrium wall velocity using the entropy production (2609.xxxxx) can be found in ```\examples\```. 
+More examples involving the calculation of the out-of-equilibrium wall velocity using the entropy production (2609.xxxxx) can be found in ```/examples/```. 
 There is also an example for computing the relaxation time tau.
 
 ## Citation
