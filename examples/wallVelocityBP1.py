@@ -3,7 +3,6 @@ Example where we compute the wall velocity using various approximations.
 The model considered here corresponds to BP1 in 2609.xxxxx.
 """
 
-import numpy as np
 from HydrodynamicsFOPT import Hydrodynamics, EntropyNLTE, EntropyBallistic, EntropyInterpolated
 
 # WallGo result
